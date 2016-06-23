@@ -1,9 +1,9 @@
 var redux = require('redux');
+var axios = require('axios');
 
 // Name reducer and action generators
 // ----------------------------------
 var nameReducer = (state = 'Anonymous', action) => {
-	console.log('action.type is: ', action.type);
 
 	switch (action.type){
 		case 'CHANGE_NAME':
@@ -18,6 +18,49 @@ var changeName = (name) => {
 		name
 	}
 };
+
+// Map reducer and action generators
+// ----------------------------------
+var mapReducer = (state = {isFetching: false, url: undefined}, action) => {
+
+	switch (action.type){
+		case 'START_LOCATION_FETCH':
+			return {
+				isFetching: true, 
+				url: undefined
+			};
+		case 'COMPLETE_LOCATION_FETCH':
+			return {
+				isFetching: false, 
+				url: action.url
+			};
+		default: 
+			return state;
+	}
+};
+var startLocationFetch = () => {
+	return {
+		type: 'START_LOCATION_FETCH',
+	};
+};
+
+var completeLocationFetch = (url) => {
+	return {
+		type: 'COMPLETE_LOCATION_FETCH',
+		url
+	};
+};
+
+var fetchLocation = () => {
+	store.dispatch(startLocationFetch());
+
+	axios.get('http://ipinfo.io').then(function(res){
+		var loc = res.data.loc;
+		var baseUrl = 'http://maps.google.com?q='
+
+		store.dispatch(completeLocationFetch(baseUrl + loc));
+	});
+}
 
 // Hobbies reducer and action generators
 // ----------------------------------
@@ -105,7 +148,8 @@ var reducer = redux.combineReducers({
 	name: nameReducer,
 	searchText: searchReducer,
 	hobbies: hobbiesReducer,
-	movies: moviesReducer
+	movies: moviesReducer,
+	map: mapReducer
 });
 
 var store = redux.createStore(reducer, redux.compose(
@@ -114,9 +158,12 @@ var store = redux.createStore(reducer, redux.compose(
 
 var unsubscribe = store.subscribe( () => {
 	var state = store.getState();
-	console.log('current state: ', state);
 
-	document.getElementById('app').innerHTML = state.name;
+	if (state.map.isFetching){
+		document.getElementById('app').innerHTML = 'Loading...';
+	}else if(state.map.url){
+		document.getElementById('app').innerHTML = '<a href="' + state.map.url + '" target="_blank">View Your Location</a>';
+	}
 });
 // unsubscribe();
 /*
@@ -138,4 +185,6 @@ store.dispatch(addMovie('X-Men 1', 'Sci-fi'));
 store.dispatch(addMovie('Finding Dory', 'Fiction'));
 store.dispatch(removeHobby(1));
 store.dispatch(removeMovie(1));
+
+fetchLocation();
 
